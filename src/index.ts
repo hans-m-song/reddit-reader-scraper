@@ -1,4 +1,5 @@
 import yargs from 'yargs';
+import {runConverter} from './converter';
 import {runScraper} from './scraper/index';
 
 yargs
@@ -50,7 +51,7 @@ yargs
           type: 'string',
           demandOption: true,
         }),
-    console.log,
+    (args) => runConverter(args),
   )
   .demandCommand()
   .help()
