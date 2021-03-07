@@ -25,3 +25,6 @@ export const timer = () => {
   const start = Date.now();
   return () => (Date.now() - start) / 1000;
 };
+
+export const stringMatcher = (matcher: string, content: string): boolean =>
+  content.toLowerCase().includes(matcher.toLowerCase());

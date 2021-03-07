@@ -10,17 +10,34 @@ interface ScraperArgs {
   initial_url: string;
   next_matcher: string;
   output: string;
+  append?: boolean;
 }
+
+const initialiseStory = async (args: ScraperArgs): Promise<Story> => {
+  if (args.append) {
+    io.log('loading story from file', {location: args.output});
+    const data = await fs.readFile(args.output);
+    return JSON.parse(data.toString());
+  }
+
+  return {
+    name: args.name,
+    startingUrl: args.initial_url,
+    nextMatcher: args.next_matcher,
+    chapters: [],
+  };
+};
 
 export const runScraper = async (args: ScraperArgs) => {
   const totalDuration = timer();
 
-  const story: Story = {
-    name: args.name,
-    startingUrl: args.initial_url,
-    nextMatcher: new RegExp(args.next_matcher, 'i'),
-    chapters: [],
-  };
+  const story = await initialiseStory(args);
+  io.log('scraper begin', {
+    name: story.name,
+    startingUrl: story.startingUrl,
+    nextMatcher: String(story.nextMatcher),
+    append: args.append ? 'yes' : 'no',
+  });
 
   const browser = await playwright.chromium.launch();
   const context = await browser.newContext();
@@ -57,15 +74,14 @@ export const runScraper = async (args: ScraperArgs) => {
     .then(() => io.info('scraping completed', {name: story.name}))
     .catch((e) => io.error('error scraping', {}, e))
     .finally(async () => {
-      const folder = path.join(__dirname, '../../', args.output);
-      const location = path.join(folder, `${slug(story.name)}.json`);
+      const parsed = path.parse(args.output);
       io.info('saving story data', {
-        location,
+        location: args.output,
         chapters: story.chapters.length.toString(),
       });
       io.info('scraper exiting', {duration: totalDuration().toString()});
       await browser?.close();
-      await fs.mkdir(folder, {recursive: true}).catch();
-      await io.file(location, JSON.stringify(story, null, 4));
+      await fs.mkdir(parsed.dir, {recursive: true}).catch();
+      await io.file(args.output, JSON.stringify(story, null, 4));
     });
 };

@@ -5,7 +5,7 @@ import {
   CHAPTER_CONTENT,
   CHAPTER_TITLE,
 } from './selectors';
-import {getElement, getProp} from './utils';
+import {getElement, getProp, stringMatcher} from './utils';
 
 export interface Chapter {
   location: string;
@@ -17,7 +17,7 @@ export interface Chapter {
 
 export interface StoryMeta {
   startingUrl: string;
-  nextMatcher: RegExp;
+  nextMatcher: string;
   name: string;
 }
 
@@ -27,7 +27,7 @@ export interface Story extends StoryMeta {
 
 export const getNext = async (
   page: Page,
-  nextMatcher: RegExp,
+  nextMatcher: string,
 ): Promise<string | null> => {
   const content = await getElement(page, CHAPTER_CONTENT);
   if (!content) return null;
@@ -36,8 +36,8 @@ export const getNext = async (
     elist.map(({href, innerText}) => ({href, innerText})),
   );
 
-  const next = await anchors.filter(
-    ({innerText}) => innerText && nextMatcher.test(innerText),
+  const next = anchors.filter(
+    ({innerText}) => innerText && stringMatcher(nextMatcher, innerText),
   );
 
   return next[0]?.href || null;
@@ -45,7 +45,7 @@ export const getNext = async (
 
 export const scrapeChapter = async (
   page: Page,
-  nextMatcher: RegExp,
+  nextMatcher: string,
 ): Promise<Chapter | null> => {
   const location = await page.evaluate(() => window.location.pathname);
 
