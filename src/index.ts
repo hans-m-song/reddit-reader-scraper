@@ -1,6 +1,7 @@
 import yargs from 'yargs';
 import {runConverter} from './converter';
 import {runScraper} from './scraper/index';
+import 'source-map-support/register';
 
 const args = yargs
   .command(
