@@ -1,4 +1,6 @@
 import {Page} from 'playwright';
+import {io} from '../io';
+import readline from 'readline';
 import {
   CHAPTER_AUTHOR,
   CHAPTER_CONTAINER,
@@ -6,6 +8,7 @@ import {
   CHAPTER_TITLE,
 } from './selectors';
 import {getElement, getProp, stringMatcher} from './utils';
+import fs from 'fs';
 
 export interface Chapter {
   location: string;
@@ -25,7 +28,48 @@ export interface Story extends StoryMeta {
   chapters: Chapter[];
 }
 
-export const getNext = async (
+const getUserSelection = async (
+  choices: {innerText: string; href: string}[],
+  showChoices = true,
+): Promise<string | null> => {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+  if (showChoices) {
+    choices.forEach(({innerText, href}, i) => {
+      console.log(`[${i}]`, `[innerText = ${innerText}] [href = ${href}]`);
+    });
+    console.log('or "q" to quit');
+    console.log('or "c" for custom option');
+  }
+  // io.info('Index of link to next chapter: ');
+  const choice = await new Promise((resolve) =>
+    rl.question('Index of link to next chapter: ', resolve),
+  );
+
+  if (choice === 'c') {
+    const result = await new Promise((resolve) =>
+      rl.question('Input a custom link: ', resolve),
+    );
+    rl.close();
+    return result as string;
+  }
+
+  rl.close();
+
+  if (choice === 'q') {
+    return null;
+  }
+
+  if (!isNaN(Number(choice))) {
+    return choices[Number(choice)].href;
+  }
+
+  return getUserSelection(choices, false);
+};
+
+const getNext = async (
   page: Page,
   nextMatcher: string,
 ): Promise<string | null> => {
@@ -40,7 +84,15 @@ export const getNext = async (
     ({innerText}) => innerText && stringMatcher(nextMatcher, innerText),
   );
 
-  return next[0]?.href || null;
+  if (next.length > 0) {
+    return next[0].href || null;
+  }
+
+  io.warning('next anchor not found', {
+    location: await page.evaluate(() => window.location.href),
+  });
+
+  return getUserSelection(anchors);
 };
 
 export const scrapeChapter = async (

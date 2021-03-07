@@ -17,7 +17,13 @@ const initialiseStory = async (args: ScraperArgs): Promise<Story> => {
   if (args.append) {
     io.log('loading story from file', {location: args.output});
     const data = await fs.readFile(args.output);
-    return JSON.parse(data.toString());
+    const parsed = JSON.parse(data.toString()) as Story;
+    parsed.chapters[parsed.chapters.length - 1].next = args.initial_url;
+
+    return {
+      ...parsed,
+      startingUrl: args.initial_url,
+    };
   }
 
   return {
