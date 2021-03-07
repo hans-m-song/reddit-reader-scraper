@@ -5,6 +5,7 @@ import {
   CHAPTER_AUTHOR,
   CHAPTER_CONTAINER,
   CHAPTER_CONTENT,
+  CHAPTER_NEXT_FALLBACK,
   CHAPTER_TITLE,
 } from './selectors';
 import {getElement, getProp, stringMatcher} from './utils';
@@ -92,7 +93,13 @@ const getNext = async (
     location: await page.evaluate(() => window.location.href),
   });
 
-  return getUserSelection(anchors);
+  const additionalAnchors = await page.$$eval(
+    CHAPTER_NEXT_FALLBACK,
+    (elist: HTMLAnchorElement[]) =>
+      elist.map(({innerText, href}) => ({innerText, href})),
+  );
+
+  return getUserSelection([...anchors, ...additionalAnchors]);
 };
 
 export const scrapeChapter = async (
