@@ -1,0 +1,21 @@
+{
+  "name": "reddit-reader-scraper",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "compile": "tsc",
+    "watch": "tsc -w",
+    "start": "node dist"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/yargs": "^16.0.0",
+    "epub-gen": "^0.1.0",
+    "playwright": "^1.9.1",
+    "yargs": "^16.2.0"
+  }
+}
