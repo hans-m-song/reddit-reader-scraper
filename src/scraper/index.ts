@@ -1,9 +1,9 @@
 import playwright from 'playwright';
 import {io} from '../io';
 import fs from 'fs/promises';
-import {hasNextChapter, scrapeChapter, Story} from './scraper';
+import {scrapeChapter, Story} from './scraper';
 import path from 'path';
-import {slug} from './utils';
+import {slug, timer} from './utils';
 
 interface ScraperArgs {
   name: string;
@@ -13,10 +13,12 @@ interface ScraperArgs {
 }
 
 export const runScraper = async (args: ScraperArgs) => {
+  const totalDuration = timer();
+
   const story: Story = {
     name: args.name,
     startingUrl: args.initial_url,
-    nextMatcher: new RegExp(args.next_matcher),
+    nextMatcher: new RegExp(args.next_matcher, 'i'),
     chapters: [],
   };
 
@@ -30,7 +32,9 @@ export const runScraper = async (args: ScraperArgs) => {
   await page.goto(story.startingUrl, {waitUntil: 'domcontentloaded'});
 
   const scrape = async () => {
-    const chapter = await scrapeChapter(page);
+    const chapterDuration = timer();
+
+    const chapter = await scrapeChapter(page, story.nextMatcher);
     if (chapter === null) {
       io.warning('no chapter found');
       return;
@@ -38,14 +42,16 @@ export const runScraper = async (args: ScraperArgs) => {
 
     story.chapters.push(chapter);
 
-    const nextHref = await hasNextChapter(page, story.nextMatcher);
-    if (nextHref) {
-      await page.goto(nextHref);
+    io.info('scraped chapter', {
+      title: chapter.title,
+      duration: chapterDuration().toString(),
+    });
+
+    if (chapter.next) {
+      await page.goto(chapter.next);
       await scrape();
     }
   };
-
-  process.on('SIGINT', () => browser.close());
 
   await scrape()
     .then(() => io.info('scraping completed', {name: story.name}))
@@ -57,6 +63,7 @@ export const runScraper = async (args: ScraperArgs) => {
         location,
         chapters: story.chapters.length.toString(),
       });
+      io.info('scraper exiting', {duration: totalDuration().toString()});
       await browser?.close();
       await fs.mkdir(folder, {recursive: true}).catch();
       await io.file(location, JSON.stringify(story, null, 4));

@@ -1,5 +1,4 @@
 import {Page} from 'playwright';
-import {io} from '../io';
 import {
   CHAPTER_AUTHOR,
   CHAPTER_CONTAINER,
@@ -13,6 +12,7 @@ export interface Chapter {
   author: string;
   title: string;
   content: string;
+  next: string | null;
 }
 
 export interface StoryMeta {
@@ -25,26 +25,7 @@ export interface Story extends StoryMeta {
   chapters: Chapter[];
 }
 
-export const scrapeChapter = async (page: Page): Promise<Chapter | null> => {
-  const location = await page.evaluate(() => window.location.pathname);
-  io.info('scraping chapter', {location});
-
-  const container = await getElement(page, CHAPTER_CONTAINER);
-  if (!container) return null;
-
-  const authorEl = await getElement(page, CHAPTER_AUTHOR);
-  const titleEl = await getElement(page, CHAPTER_TITLE);
-  const contentEl = await getElement(page, CHAPTER_CONTENT);
-  if (!authorEl || !titleEl || !contentEl) return null;
-
-  const author = (await getProp(authorEl)) || '';
-  const title = (await getProp(titleEl)) || '';
-  const content = (await getProp(contentEl, 'innerHTML')) || '';
-
-  return {location, author, title, content};
-};
-
-export const hasNextChapter = async (
+export const getNext = async (
   page: Page,
   nextMatcher: RegExp,
 ): Promise<string | null> => {
@@ -60,4 +41,26 @@ export const hasNextChapter = async (
   );
 
   return next[0]?.href || null;
+};
+
+export const scrapeChapter = async (
+  page: Page,
+  nextMatcher: RegExp,
+): Promise<Chapter | null> => {
+  const location = await page.evaluate(() => window.location.pathname);
+
+  const container = await getElement(page, CHAPTER_CONTAINER);
+  if (!container) return null;
+
+  const authorEl = await getElement(page, CHAPTER_AUTHOR);
+  const titleEl = await getElement(page, CHAPTER_TITLE);
+  const contentEl = await getElement(page, CHAPTER_CONTENT);
+  if (!authorEl || !titleEl || !contentEl) return null;
+
+  const author = (await getProp(authorEl)) || '';
+  const title = (await getProp(titleEl)) || '';
+  const content = (await getProp(contentEl, 'innerHTML')) || '';
+  const next = await getNext(page, nextMatcher);
+
+  return {location, author, title, content, next};
 };

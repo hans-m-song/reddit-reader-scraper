@@ -20,3 +20,8 @@ export const getAttribute = async (el: ElementHandle, attribute: string) =>
   el.evaluate((el) => (el as HTMLElement).getAttribute(attribute));
 
 export const slug = (value: string) => value.replace(/\s+/g, '-');
+
+export const timer = () => {
+  const start = Date.now();
+  return () => (Date.now() - start) / 1000;
+};
