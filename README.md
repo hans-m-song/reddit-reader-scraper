@@ -25,6 +25,22 @@ node dist/index.js scrape \
   --output output/a-story-name.json
 ```
 
+if at any point the scraper can't find a matching anchor it will prompt the user for the next anchor
+
+user may enter a number to use a provided link or provide their own
+
+example:
+
+```
+[WAR] next anchor not found [location = https://www.reddit.com/r/HFY/comments/.../.../]
+[0] [innerText = first] [href = https://www.reddit.com/r/HFY/comments/.../.../]
+[1] [innerText = prev] [href = https://www.reddit.com/r/HFY/comments/.../.../]
+[2] [innerText = first] [href = https://www.reddit.com/r/HFY/comments/.../.../]
+or "q" to quit
+or "c" for custom option
+Index of link to next chapter:
+```
+
 ## converter
 
 converts output json into epub
