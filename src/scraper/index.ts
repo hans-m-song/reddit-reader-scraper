@@ -4,26 +4,29 @@ import fs from 'fs/promises';
 import {scrapeChapter, Story} from './scraper';
 import path from 'path';
 import {slug, timer} from './utils';
+import {parse} from 'yargs';
 
 interface ScraperArgs {
   name: string;
   initial_url: string;
   next_matcher: string;
   output: string;
-  append?: boolean;
+  continue?: boolean;
 }
 
 const initialiseStory = async (args: ScraperArgs): Promise<Story> => {
-  if (args.append) {
+  if (args.continue) {
     io.log('loading story from file', {location: args.output});
     const data = await fs.readFile(args.output);
     const parsed = JSON.parse(data.toString()) as Story;
-    parsed.chapters[parsed.chapters.length - 1].next = args.initial_url;
+    if (parsed.chapters.length > 0) {
+      const last = parsed.chapters[parsed.chapters.length - 1];
+      if (last.next === null) {
+        last.next = args.initial_url;
+      }
+    }
 
-    return {
-      ...parsed,
-      startingUrl: args.initial_url,
-    };
+    return parsed;
   }
 
   return {
@@ -38,21 +41,21 @@ export const runScraper = async (args: ScraperArgs) => {
   const totalDuration = timer();
 
   const story = await initialiseStory(args);
-  io.log('scraper begin', {
-    name: story.name,
-    startingUrl: story.startingUrl,
-    nextMatcher: String(story.nextMatcher),
-    append: args.append ? 'yes' : 'no',
-  });
 
   const browser = await playwright.chromium.launch();
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  const url = new URL(story.startingUrl);
+  const url = new URL(args.initial_url);
   const [subreddit, , id] = url.pathname.replace('/r/', '').split('/');
-  io.info('scraping story', {name: story.name, subreddit, id});
-  await page.goto(story.startingUrl, {waitUntil: 'domcontentloaded'});
+  io.info('scraping story', {
+    name: story.name,
+    url: url.pathname,
+    continue: args.continue ? 'yes' : 'no',
+    subreddit,
+    id,
+  });
+  await page.goto(args.initial_url, {waitUntil: 'domcontentloaded'});
 
   const scrape = async () => {
     const chapterDuration = timer();

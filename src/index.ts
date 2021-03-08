@@ -14,8 +14,9 @@ const args = yargs
           type: 'string',
           demandOption: true,
         })
-        .option('append', {
-          description: 'Append chapters to specified output file',
+        .option('continue', {
+          description:
+            'Continue scraping existing story (use output to specify file, initial_url will be used as continuation link)',
           type: 'boolean',
           default: false,
           nargs: 0,
