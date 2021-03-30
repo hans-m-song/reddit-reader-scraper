@@ -1,61 +1,40 @@
 import playwright from 'playwright';
 import {io} from '../io';
 import fs from 'fs/promises';
-import {scrapeChapter, Story} from './scraper';
 import path from 'path';
-import {slug, timer} from './utils';
-import {parse} from 'yargs';
+import {scrapeChapter, Story} from './scraper';
+import {timer} from './utils';
 
-interface ScraperArgs {
-  name: string;
-  initial_url: string;
-  next_matcher: string;
-  output: string;
-  continue?: boolean;
-}
-
-const initialiseStory = async (args: ScraperArgs): Promise<Story> => {
-  if (args.continue) {
-    io.log('loading story from file', {location: args.output});
-    const data = await fs.readFile(args.output);
-    const parsed = JSON.parse(data.toString()) as Story;
-    if (parsed.chapters.length > 0) {
-      const last = parsed.chapters[parsed.chapters.length - 1];
-      if (last.next === null) {
-        last.next = args.initial_url;
-      }
-    }
-
-    return parsed;
-  }
-
-  return {
-    name: args.name,
-    startingUrl: args.initial_url,
-    nextMatcher: args.next_matcher,
-    chapters: [],
-  };
+export const fromFile = async (filename: string): Promise<Story> => {
+  const filepath = path.resolve(__dirname, '../../', filename);
+  io.log('loading story from file', {filepath});
+  const data = await fs.readFile(filepath);
+  const parsed = JSON.parse(data.toString());
+  return parsed;
 };
 
-export const runScraper = async (args: ScraperArgs) => {
+export const runScraper = async (story: Story) => {
   const totalDuration = timer();
-
-  const story = await initialiseStory(args);
 
   const browser = await playwright.chromium.launch();
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  const url = new URL(args.initial_url);
+  const startUrl =
+    story.chapters.length > 0
+      ? story.chapters[story.chapters.length - 1].location
+      : story.startingUrl;
+
+  const url = new URL(startUrl);
   const [subreddit, , id] = url.pathname.replace('/r/', '').split('/');
   io.info('scraping story', {
     name: story.name,
     url: url.pathname,
-    continue: args.continue ? 'yes' : 'no',
     subreddit,
     id,
   });
-  await page.goto(args.initial_url, {waitUntil: 'domcontentloaded'});
+
+  await page.goto(startUrl, {waitUntil: 'domcontentloaded'});
 
   const scrape = async () => {
     const chapterDuration = timer();
@@ -66,14 +45,20 @@ export const runScraper = async (args: ScraperArgs) => {
       return;
     }
 
-    story.chapters.push(chapter);
+    if (chapter.location === startUrl) {
+      story.chapters[story.chapters.length - 1] = {
+        ...story.chapters[story.chapters.length - 1],
+        ...chapter,
+      };
+    } else {
+      story.chapters.push(chapter);
+      io.info('scraped chapter', {
+        title: chapter.title,
+        duration: chapterDuration().toString(),
+      });
+    }
 
-    io.info('scraped chapter', {
-      title: chapter.title,
-      duration: chapterDuration().toString(),
-    });
-
-    if (chapter.next) {
+    if (chapter.next !== null) {
       await page.goto(chapter.next);
       await scrape();
     }
@@ -83,14 +68,14 @@ export const runScraper = async (args: ScraperArgs) => {
     .then(() => io.info('scraping completed', {name: story.name}))
     .catch((e) => io.error('error scraping', {}, e))
     .finally(async () => {
-      const parsed = path.parse(args.output);
+      const parsed = path.parse(story.fileLocation);
       io.info('saving story data', {
-        location: args.output,
+        location: story.fileLocation,
         chapters: story.chapters.length.toString(),
       });
       io.info('scraper exiting', {duration: totalDuration().toString()});
       await browser?.close();
-      await fs.mkdir(parsed.dir, {recursive: true}).catch();
-      await io.file(args.output, JSON.stringify(story, null, 4));
+      await fs.mkdir(parsed.dir, {recursive: true}).catch(() => {});
+      await io.file(story.fileLocation, JSON.stringify(story, null, 4));
     });
 };

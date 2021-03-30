@@ -2,6 +2,8 @@ import yargs from 'yargs';
 import {runConverter} from './converter';
 import {runScraper} from './scraper/index';
 import 'source-map-support/register';
+import {runInteractive} from './run';
+import {io} from './io';
 
 const args = yargs
   .command(
@@ -36,7 +38,14 @@ const args = yargs
           type: 'string',
           demandOption: true,
         }),
-    (args) => runScraper(args),
+    (args) =>
+      runScraper({
+        startingUrl: args.initial_url,
+        nextMatcher: args.next_matcher,
+        fileLocation: args.output,
+        name: args.name,
+        chapters: [],
+      }),
   )
   .command(
     'convert',
@@ -53,10 +62,20 @@ const args = yargs
           type: 'string',
           demandOption: true,
         }),
-    (args) => runConverter(args),
+    (args) =>
+      runConverter({
+        inputFileLocation: args.file_location,
+        outputFileLocation: args.output,
+      }),
   )
-  .demandCommand()
+  .command(
+    '$0',
+    'Default to interactive prompt',
+    () => {},
+    () => {
+      io.log('Running in interactive mode');
+      runInteractive();
+    },
+  )
   .help()
   .parse();
-
-console.log(args);

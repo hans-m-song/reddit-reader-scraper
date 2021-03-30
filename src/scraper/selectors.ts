@@ -6,4 +6,4 @@ export const CHAPTER_TITLE = `${CHAPTER_CONTAINER} > :nth-child(3)`;
 
 export const CHAPTER_CONTENT = `${CHAPTER_CONTAINER} > :nth-child(5)`;
 
-export const CHAPTER_NEXT_FALLBACK = '[data-test-id="comment"] a';
+export const CHAPTER_NEXT_FALLBACK = `${CHAPTER_CONTAINER} a, [data-test-id="comment"] a`;

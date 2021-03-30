@@ -4,18 +4,35 @@ import Epub from 'epub-gen';
 import {io} from '../io';
 
 interface ConverterArgs {
-  file_location: string;
-  output: string;
+  inputFileLocation: string;
+  outputFileLocation: string;
 }
 
 export const runConverter = async (args: ConverterArgs) => {
-  const data = await fs.readFile(args.file_location);
+  const data = await fs.readFile(args.inputFileLocation);
   const json = JSON.parse(data.toString()) as Story;
   await new Epub({
     title: json.name,
     author: '',
-    output: args.output,
+    output: args.outputFileLocation,
     content: json.chapters.map((chapter) => ({
+      title: chapter.title,
+      author: chapter.author,
+      data: chapter.content,
+    })),
+  }).promise;
+  io.log('done');
+};
+
+export const convertToEpub = async (
+  story: Story,
+  outputFileLocation: string,
+) => {
+  await new Epub({
+    title: story.name,
+    author: '',
+    output: outputFileLocation,
+    content: story.chapters.map((chapter) => ({
       title: chapter.title,
       author: chapter.author,
       data: chapter.content,
